@@ -1,0 +1,9 @@
+pandas
+numpy
+pyyaml
+openpyxl
+pypdf
+pymupdf
+pillow
+pytesseract
+tqdm

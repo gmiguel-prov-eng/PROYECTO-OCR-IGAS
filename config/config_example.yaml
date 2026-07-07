@@ -1,0 +1,42 @@
+project:
+  name: PROYECTO-IGAS
+  environment: example
+
+ocr:
+  tesseract_cmd: tesseract
+  languages: spa+eng
+  fallback_languages: eng
+  require_languages: true
+
+paths:
+  input:
+    cajas: data/input/cajas
+
+  work:
+    separacion:
+      separados: data/work/01_separacion/separados
+      reportes: data/work/01_separacion/reportes
+
+    ocr_fichas:
+      extraido: data/work/02_ocr_fichas/extraido
+      reportes: data/work/02_ocr_fichas/reportes
+
+    analisis:
+      tablas: data/work/03_analisis/tablas
+      pdfs_clasificados:
+        seleccionados: data/work/03_analisis/pdfs_clasificados/seleccionados
+        revision: data/work/03_analisis/pdfs_clasificados/revision
+        no_seleccionados: data/work/03_analisis/pdfs_clasificados/no_seleccionados
+        no_considerados: data/work/03_analisis/pdfs_clasificados/no_considerados
+
+    ocr_solicitudes:
+      extraido: data/work/04_ocr_solicitudes/extraido
+      reportes: data/work/04_ocr_solicitudes/reportes
+
+  output:
+    resultados_finales:
+      resultados: data/output/04_resultados_finales/resultados
+      expedientes: data/output/04_resultados_finales/expedientes
+      inventario: data/output/04_resultados_finales/inventario
+
+  logs: data/logs

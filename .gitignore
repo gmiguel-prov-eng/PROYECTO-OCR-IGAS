@@ -1,0 +1,31 @@
+.venv/
+proyecto_igas/
+venv/
+env/
+__pycache__/
+.ipynb_checkpoints/
+.pytest_cache/
+
+# Notebooks originales no versionables
+notebooks/*
+!notebooks/README.md
+
+# Configuracion local o de infraestructura real
+config/config_local.yaml
+config/config_vm.yaml
+
+# Notebooks
+notebooks/*
+!notebooks/README.md
+
+# Datos y salidas generadas
+data/input/
+data/work/
+data/output/
+data/logs/
+*.pdf
+*.csv
+*.xlsx
+*.xls
+*.tmp
+*.log
