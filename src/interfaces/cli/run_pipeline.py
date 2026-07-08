@@ -9,6 +9,7 @@ if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
 from application.use_cases import analizar_datos, ocr_fichas, ocr_solicitudes, separar_pdf
+from infrastructure.config.lotes import preparar_config_lote
 from infrastructure.config.yaml_loader import cargar_config, crear_directorios_base
 from infrastructure.logging.logger import configurar_logger
 
@@ -41,14 +42,30 @@ def main():
         action="store_true",
         help="Continua con pasos posteriores aunque un paso reporte estado con_errores.",
     )
+    parser.add_argument(
+        "--lote",
+        type=int,
+        help="Numero de lote de cajas a procesar. Ejemplo: 1 genera salidas en lote_1.",
+    )
+    parser.add_argument(
+        "--tamano-lote",
+        type=int,
+        default=5,
+        help="Cantidad de cajas por lote. Por defecto: 5.",
+    )
     args = parser.parse_args()
 
     if int(args.desde) > int(args.hasta):
         raise ValueError("--desde no puede ser mayor que --hasta.")
 
     config = cargar_config(args.config)
+    if args.lote:
+        config = preparar_config_lote(config, args.lote, args.tamano_lote)
     config = crear_directorios_base(config)
-    logger = configurar_logger("pipeline", config["paths"]["logs"])
+    nombre_logger = "pipeline"
+    if config.get("lote"):
+        nombre_logger = f"pipeline_{config['lote']['nombre']}"
+    logger = configurar_logger(nombre_logger, config["paths"]["logs"])
 
     pasos = seleccionar_pasos(args.desde, args.hasta)
     resultados = ejecutar_pipeline(config, logger, pasos, continuar_con_errores=args.continuar_con_errores)
@@ -66,6 +83,13 @@ def seleccionar_pasos(desde, hasta):
 
 def ejecutar_pipeline(config, logger, pasos, continuar_con_errores=False):
     resultados = []
+    if config.get("lote"):
+        logger.info(
+            "Ejecutando %s de %s. Cajas: %s",
+            config["lote"]["nombre"],
+            config["lote"]["total_lotes"],
+            ", ".join(config["lote"]["cajas"]),
+        )
 
     for codigo, nombre, funcion in pasos:
         logger.info("Iniciando paso %s - %s", codigo, nombre)
@@ -76,6 +100,9 @@ def ejecutar_pipeline(config, logger, pasos, continuar_con_errores=False):
             resultado["codigo_paso"] = codigo
             resultado["nombre_paso"] = nombre
             resultado["tiempo_seg"] = round(time.perf_counter() - inicio, 2)
+            if config.get("lote"):
+                resultado["lote"] = config["lote"]["nombre"]
+                resultado["cajas_lote"] = ",".join(config["lote"]["cajas"])
         except Exception as exc:
             logger.exception("Error ejecutando paso %s - %s", codigo, nombre)
             resultado = {
@@ -86,6 +113,9 @@ def ejecutar_pipeline(config, logger, pasos, continuar_con_errores=False):
                 "error": str(exc),
                 "tiempo_seg": round(time.perf_counter() - inicio, 2),
             }
+            if config.get("lote"):
+                resultado["lote"] = config["lote"]["nombre"]
+                resultado["cajas_lote"] = ",".join(config["lote"]["cajas"])
 
         resultados.append(resultado)
         logger.info(
@@ -129,6 +159,8 @@ def claves_resumen(resultado):
         "pdfs_sin_informe_tecnico",
         "expedientes_copiados",
         "reporte_general",
+        "lote",
+        "cajas_lote",
         "ocr_languages",
         "ocr_missing_languages",
         "error",

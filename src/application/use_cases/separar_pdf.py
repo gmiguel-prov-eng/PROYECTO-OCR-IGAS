@@ -32,7 +32,14 @@ def ejecutar(config, logger):
     asegurar_directorio(salida)
     asegurar_directorio(reportes)
 
-    pdfs = _descubrir_pdfs_originales(entrada)
+    cajas_lote = set(config.get("lote", {}).get("cajas", []))
+    pdfs = _descubrir_pdfs_originales(entrada, cajas_lote=cajas_lote)
+    if cajas_lote:
+        logger.info(
+            "Proceso 1 iniciado para %s. Cajas del lote: %s",
+            config["lote"]["nombre"],
+            ", ".join(config["lote"]["cajas"]),
+        )
     logger.info("Proceso 1 iniciado. PDFs originales detectados: %s", len(pdfs))
 
     resultados_generales = []
@@ -61,14 +68,17 @@ def ejecutar(config, logger):
         "reporte_general": reporte_general,
         "ocr_languages": validacion_ocr["effective_languages"],
         "ocr_missing_languages": validacion_ocr["missing_languages"],
+        "lote": config.get("lote", {}).get("nombre", ""),
+        "cajas_lote": ",".join(config.get("lote", {}).get("cajas", [])),
     }
 
 
-def _descubrir_pdfs_originales(entrada):
+def _descubrir_pdfs_originales(entrada, cajas_lote=None):
     entrada = Path(entrada)
     if not entrada.exists():
         return []
 
+    cajas_lote = set(cajas_lote or [])
     pdfs = []
     for pdf_path in sorted(entrada.rglob("*.pdf")):
         relative = pdf_path.relative_to(entrada)
@@ -76,6 +86,9 @@ def _descubrir_pdfs_originales(entrada):
             continue
 
         caja = relative.parts[0]
+        if cajas_lote and caja not in cajas_lote:
+            continue
+
         carpeta = relative.parts[1]
         pdfs.append(
             {

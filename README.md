@@ -104,6 +104,23 @@ Pipeline completo:
 python src/interfaces/cli/run_pipeline.py --config config/config_local.yaml
 ```
 
+Procesamiento por lotes de 5 cajas:
+
+```bash
+python src/interfaces/cli/run_pipeline.py --config config/config_local.yaml --lote 1
+python src/interfaces/cli/run_pipeline.py --config config/config_local.yaml --lote 2
+```
+
+Cada lote procesa 5 carpetas de caja, ordenadas alfabeticamente desde `paths.input.cajas`.
+Las salidas se guardan separadas agregando `lote_N` a las rutas de `work`, `output` y `logs`,
+por ejemplo `data/work/02_ocr_fichas/extraido/lote_1`.
+
+Para cambiar la cantidad de cajas por lote:
+
+```bash
+python src/interfaces/cli/run_pipeline.py --config config/config_local.yaml --lote 1 --tamano-lote 5
+```
+
 El pipeline tambien permite ejecutar rangos de pasos:
 
 ```bash
