@@ -154,7 +154,7 @@ Z:/DOCUMENTACION/2019/DGPRC/OFICIOS  ← input.oficios_origen (origen transfer)
 | `work/03_analisis/pdfs_clasificados/` | PDF por estado de análisis                                          |
 | `work/03_1_revision_manual/`          | PDF en estado `revision` (plano); entrada del reporte de subsanados |
 | `work/04_ocr_solicitudes/`            | OCR solicitudes                                                     |
-| `work/05_fichas_oficios/reportes`     | `lista_fichas_oficios`, `solicitud_oficio`                          |
+| `work/05_fichas_oficios/reportes`     | `lista_fichas_oficios`, `solicitud_oficio`, validación 06 (`resumen_validacion`, `solicitudes_sin_oficio`, `oficios_sin_solicitud`) |
 | `output/04_resultados_finales/`       | Ver mapa de limpieza final (§3.5)                                   |
 
 
@@ -236,6 +236,9 @@ PDF_unido + reporte_solicitud_oficio
 | `inventario_final.csv`                    | output inventario                    | `hoja_ruta,nombre_informe,tiene_informe,…`                                                                                        |
 | `lista_fichas_oficios`                    | work 05 + por empresa                | `empresa;archivo;hoja_ruta;conformidad;tiene_hoja_ruta;revisado` (+ `ruta_pdf` operativo)                                         |
 | `solicitud_oficio.csv`                    | work 05                              | Merge solicitudes×oficios + `match_oficio`                                                                                        |
+| `resumen_validacion.csv`                  | work 05                              | Validación 06: `metrica,valor` (encontrados vs no encontrados en ambos sentidos)                                                  |
+| `solicitudes_sin_oficio.csv`              | work 05                              | Validación 06: solicitudes sin oficio (`match_oficio=False`)                                                                      |
+| `oficios_sin_solicitud.csv`               | work 05                              | Validación 06: oficios elegibles sin solicitud asociada                                                                           |
 | `reporte_solicitud_oficio.csv`            | expedientes_oficio                   | Operativo 07: `hoja_ruta,archivo_solicitud,archivo_oficio,pdf_salida,paginas_*,match_oficio,…`                                    |
 | `**reporte_solicitud_oficio_limpio.csv**` | expedientes_oficio                   | **Entrega Flujo 2:** `hoja_ruta`, `oficio`, `remitente`, `asunto` (§4.4)                                                          |
 | Inventario alimentado limpio (F1)         | expediente_final                     | **Entrega Flujo 1:** `hoja_ruta`, `nombre_informe`, `remitente`, `asunto`                                                         |
@@ -350,9 +353,18 @@ Orquestador (05→06→07):
 | **Entrada**        | `seleccionados_total` (work 03) + `lista_fichas_oficios` (work 05)                 |
 | **Transformación** | Join por `hoja_ruta`; excluye oficios `revisado=visto` o estado PARCIAL/INCOMPLETO |
 | **Salida**         | `solicitud_oficio.csv` (`match_oficio`, datos de solicitud y oficio)               |
+| **Validación**     | `resumen_validacion.csv` + `solicitudes_sin_oficio.csv` + `oficios_sin_solicitud.csv` (ver §7.3) |
 
 
 Sin este paso, el 07 no tiene tabla de matches actualizada.
+
+**Reportes de validación (paso 06).** Como se evalúan los **dos contenidos** (solicitudes y oficios), el paso deja en `work/05_fichas_oficios/reportes/` una evaluación cruzada que demuestra *lo encontrado* y *lo no encontrado*, **sin modificar** el inventario final:
+
+- `resumen_validacion.csv` — tabla `metrica, valor` con el panorama: totales, con match y sin match en ambos sentidos.
+- `solicitudes_sin_oficio.csv` — solicitudes cuyo oficio **no** se encontró (`match_oficio = False`).
+- `oficios_sin_solicitud.csv` — oficios elegibles cuya `hoja_ruta` **no** aparece en ninguna solicitud.
+
+> `oficios_sin_solicitud` se calcula sobre oficios **elegibles** (COMPLETO con `hoja_ruta`; se excluyen `revisado=visto` y PARCIAL/INCOMPLETO, que no tienen `hoja_ruta` confiable para emparejar).
 
 #### Paso 07 — `unir_solicitud_oficio` *(después de 06)*
 
@@ -521,6 +533,10 @@ Salida: tablas + copia/movimiento a carpetas `pdfs_clasificados/...`.
 - Une solicitudes (`seleccionados_total`) con oficios elegibles por `hoja_ruta`.
 - Excluye oficios marcados `revisado=visto` o en estados no elegibles (`PARCIAL`, `INCOMPLETO`).
 - Produce columna `match_oficio` (booleana / indicador de éxito).
+- **Evaluación de los 2 contenidos** (reportes aparte, no tocan el inventario final):
+  - `resumen_validacion.csv` — tabla `metrica, valor` con encontrados vs no encontrados en ambos sentidos.
+  - `solicitudes_sin_oficio.csv` — solicitudes sin oficio (`match_oficio = False`).
+  - `oficios_sin_solicitud.csv` — oficios elegibles sin solicitud asociada.
 
 ### 7.4 Verificación de unión (paso 07)
 

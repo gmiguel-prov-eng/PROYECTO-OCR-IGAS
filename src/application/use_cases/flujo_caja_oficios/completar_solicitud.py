@@ -42,7 +42,43 @@ def ejecutar(config, logger):
     df_result = merge_solicitud_oficio(df_solicitudes, oficios_elegibles, logger)
     df_result.to_csv(salida, index=False, encoding="utf-8-sig")
 
+    # Validacion de los 2 contenidos evaluados (reportes aparte, no tocan inventario final):
+    #   - solicitudes sin oficio: filas del cruce con match_oficio=False
+    #   - oficios sin solicitud: oficios elegibles cuya hoja_ruta no aparece en solicitudes
+    if "match_oficio" in df_result.columns:
+        sin_oficio = df_result[~df_result["match_oficio"].astype(bool)].copy()
+    else:
+        sin_oficio = df_result.iloc[0:0].copy()
+    salida_sin_oficio = reportes_oficios / "solicitudes_sin_oficio.csv"
+    sin_oficio.to_csv(salida_sin_oficio, index=False, encoding="utf-8-sig")
+
+    sin_solicitud = calcular_oficios_sin_solicitud(df_solicitudes, oficios_elegibles)
+    salida_sin_solicitud = reportes_oficios / "oficios_sin_solicitud.csv"
+    sin_solicitud.to_csv(salida_sin_solicitud, index=False, encoding="utf-8-sig")
+
     con_oficio = int(df_result["match_oficio"].sum()) if "match_oficio" in df_result.columns else 0
+    oficios_con_hoja = int(
+        oficios_elegibles["hoja_ruta"].map(normalizar_hoja_ruta).astype(bool).sum()
+    )
+    oficios_con_solicitud = oficios_con_hoja - len(sin_solicitud)
+
+    # Resumen de validacion: demuestra en una sola tabla lo encontrado / no encontrado.
+    resumen_validacion = pd.DataFrame(
+        [
+            ("solicitudes_total", len(df_solicitudes)),
+            ("solicitudes_con_oficio", con_oficio),
+            ("solicitudes_sin_oficio", len(sin_oficio)),
+            ("oficios_entrada", len(df_oficios)),
+            ("oficios_excluidos_parcial_incompleto_visto", oficios_excluidos),
+            ("oficios_elegibles", len(oficios_elegibles)),
+            ("oficios_con_solicitud", oficios_con_solicitud),
+            ("oficios_sin_solicitud", len(sin_solicitud)),
+        ],
+        columns=["metrica", "valor"],
+    )
+    salida_resumen = reportes_oficios / "resumen_validacion.csv"
+    resumen_validacion.to_csv(salida_resumen, index=False, encoding="utf-8-sig")
+
     resumen = {
         "proceso": "completar_solicitud",
         "estado": "completado",
@@ -53,7 +89,13 @@ def ejecutar(config, logger):
         "filas_resultado": len(df_result),
         "con_match_oficio": con_oficio,
         "sin_match_oficio": len(df_result) - con_oficio,
+        "solicitudes_sin_oficio": len(sin_oficio),
+        "oficios_con_solicitud": oficios_con_solicitud,
+        "oficios_sin_solicitud": len(sin_solicitud),
         "salida": str(salida),
+        "salida_solicitudes_sin_oficio": str(salida_sin_oficio),
+        "salida_oficios_sin_solicitud": str(salida_sin_solicitud),
+        "salida_resumen_validacion": str(salida_resumen),
     }
     logger.info("Merge completado: %s", resumen)
     return resumen
@@ -79,6 +121,18 @@ def filtrar_oficios_para_merge(df_oficios, logger=None):
             excluidos,
         )
     return ofi.loc[~excluir].copy(), excluidos
+
+
+def calcular_oficios_sin_solicitud(df_solicitudes, df_oficios):
+    """Oficios elegibles cuya hoja_ruta no aparece en ninguna solicitud."""
+    sol_keys = {
+        k for k in df_solicitudes["hoja_ruta"].map(normalizar_hoja_ruta) if k
+    }
+    ofi = df_oficios.copy()
+    ofi["_key"] = ofi["hoja_ruta"].map(normalizar_hoja_ruta)
+    ofi = ofi[ofi["_key"].astype(bool)]
+    sin = ofi[~ofi["_key"].isin(sol_keys)].drop(columns=["_key"]).copy()
+    return sin
 
 
 def merge_solicitud_oficio(df_solicitudes, df_oficios, logger=None):
