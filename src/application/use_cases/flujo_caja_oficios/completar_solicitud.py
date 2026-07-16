@@ -59,7 +59,6 @@ def ejecutar(config, logger):
     exp_ambos = sol_keys & ofi_keys            # unidos (misma cifra desde ambas fuentes)
     exp_sol_sin_ofi = sol_keys - ofi_keys      # solicitud sin oficio
     exp_ofi_sin_sol = ofi_keys - sol_keys      # oficio sin solicitud
-    exp_union = sol_keys | ofi_keys
 
     # Detalle: solicitudes sin oficio (una fila por expediente; las solicitudes ya son unicas).
     if "match_oficio" in df_result.columns:
@@ -76,10 +75,13 @@ def ejecutar(config, logger):
 
     con_oficio = int(df_result["match_oficio"].sum()) if "match_oficio" in df_result.columns else 0
 
-    # Solicitudes SUELTAS: pasaron al Flujo 2 pero quedaron sin resolver =
-    # sin oficio Y sin expediente armado en Flujo 1 (expediente_final + subsanados).
+    # Descomposicion de las SOLICITUDES (se reparten en 3 grupos que suman el total):
+    #   con oficio  +  sin oficio pero armadas en Flujo 1  +  sueltas  =  total
+    # Solicitudes SUELTAS: pasaron al Flujo 2 pero quedaron sin resolver
+    # (sin oficio Y sin expediente armado en Flujo 1: expediente_final + subsanados).
     armados_keys = _cargar_expedientes_armados(config, logger)
-    sueltas_keys = sol_keys - ofi_keys - armados_keys
+    solicitudes_armadas = sol_keys & armados_keys      # sin oficio pero armadas en F1
+    sueltas_keys = sol_keys - ofi_keys - armados_keys  # ni oficio ni armado
     sin_oficio_norm = sin_oficio["hoja_ruta"].map(normalizar_hoja_ruta)
     sueltas = sin_oficio[~sin_oficio_norm.isin(armados_keys)].copy()
     salida_sueltas = reportes_oficios / "solicitudes_sueltas.csv"
@@ -92,20 +94,26 @@ def ejecutar(config, logger):
     excluidas_en_inventario = inventario_keys & excluidas_keys
     inventario_final = len(inventario_keys - excluidas_keys)
 
-    # Resumen de validacion por EXPEDIENTE y por fuente (demuestra encontrado / no encontrado).
+    # Resumen de validacion por EXPEDIENTE. La seccion de solicitudes deja claro
+    # como se reparte el total (con oficio / armadas / sueltas).
     resumen_validacion = pd.DataFrame(
         [
-            ("expedientes_solicitud", len(sol_keys)),
-            ("expedientes_oficio_elegible", len(ofi_keys)),
-            ("expedientes_con_solicitud_y_oficio", len(exp_ambos)),
-            ("expedientes_solicitud_sin_oficio", len(exp_sol_sin_ofi)),
-            ("expedientes_oficio_sin_solicitud", len(exp_ofi_sin_sol)),
-            ("expedientes_union_total", len(exp_union)),
+            # --- Solicitudes que pasaron al Flujo 2 (suman el total) ---
+            ("solicitudes_total", len(sol_keys)),
+            ("solicitudes_con_oficio", len(exp_ambos)),
+            ("solicitudes_sin_oficio_pero_armadas", len(solicitudes_armadas)),
+            ("solicitudes_sueltas", len(sueltas_keys)),
+            # --- Oficios ---
+            ("oficios_elegibles", len(ofi_keys)),
+            ("oficios_con_solicitud", len(exp_ambos)),
+            ("oficios_sin_solicitud", len(exp_ofi_sin_sol)),
+            # --- Expedientes armados en Flujo 1 ---
             ("expedientes_armados_flujo1", len(armados_keys)),
-            ("solicitudes_sueltas_sin_oficio_ni_armado", len(sueltas_keys)),
-            ("inventario_final_bruto_oficio_mas_armados", len(inventario_keys)),
+            # --- Inventario final de entrega ---
+            ("inventario_final_bruto", len(inventario_keys)),
             ("fichas_excluidas_por_informe", len(excluidas_en_inventario)),
             ("inventario_final", inventario_final),
+            # --- Referencia de oficios crudos ---
             ("oficios_entrada_filas", len(df_oficios)),
             ("oficios_excluidos_parcial_incompleto_visto", oficios_excluidos),
             ("oficios_elegibles_filas", len(oficios_elegibles)),
@@ -125,14 +133,14 @@ def ejecutar(config, logger):
         "filas_resultado": len(df_result),
         "con_match_oficio": con_oficio,
         "sin_match_oficio": len(df_result) - con_oficio,
-        "expedientes_solicitud": len(sol_keys),
-        "expedientes_oficio_elegible": len(ofi_keys),
-        "expedientes_con_solicitud_y_oficio": len(exp_ambos),
-        "expedientes_solicitud_sin_oficio": len(exp_sol_sin_ofi),
-        "expedientes_oficio_sin_solicitud": len(exp_ofi_sin_sol),
-        "expedientes_union_total": len(exp_union),
-        "expedientes_armados_flujo1": len(armados_keys),
+        "solicitudes_total": len(sol_keys),
+        "solicitudes_con_oficio": len(exp_ambos),
+        "solicitudes_sin_oficio_pero_armadas": len(solicitudes_armadas),
         "solicitudes_sueltas": len(sueltas_keys),
+        "oficios_elegibles": len(ofi_keys),
+        "oficios_con_solicitud": len(exp_ambos),
+        "oficios_sin_solicitud": len(exp_ofi_sin_sol),
+        "expedientes_armados_flujo1": len(armados_keys),
         "inventario_final_bruto": len(inventario_keys),
         "fichas_excluidas_por_informe": len(excluidas_en_inventario),
         "inventario_final": inventario_final,
