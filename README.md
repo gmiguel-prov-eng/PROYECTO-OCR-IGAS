@@ -20,9 +20,6 @@ Describe el diseño de la solución, datos, repositorios, tipos documentales, sc
 9. [Diagramas de flujo](#9-diagramas-de-flujo)
 10. [Documentación técnica](#10-documentación-técnica)
 11. [Manual de usuario (operación)](#11-manual-de-usuario-operación)
-12. [Checklist de evaluación](#12-checklist-de-evaluación)
-13. [Notas y pendientes de documentar](#13-notas-y-pendientes-de-documentar)
-
 ---
 
 ## 1. Diseño de la solución
@@ -780,38 +777,6 @@ Comprobar columnas: F1 → `nombre_informe`; F2 → `oficio` (nombre de archivo)
 | Conformidad mal etiquetada        | Documentos con frase en cuerpo: exige pasada con detector de cuerpo vigente |
 | Limpio sin filas / columnas raras | Entrada sin match; o tipo incorrecto (`oficios` vs `expediente_final`)      |
 
-
----
-
-## 12. Checklist de evaluación
-
-- [ ] **Flujo 2** documentado como **solo 05 → 06 → 07** (parte desde el punto 5)
-- [ ] **06 completar_solicitud** antes de **07 unir_solicitud_oficio**
-- [ ] Flujo 1 = 01–04 (+ 03b consolidación) separado del Flujo 2
-- [ ] Modelo de datos: `hoja_ruta` como clave; tablas 05/06/07 y **entrega §4.4**
-- [ ] Output: sin `resultados/`; `expediente_final` y limpio oficios claros
-- [ ] Repositorios Z: vs `data/` locales; `03_1_revision_manual`
-- [ ] Tipos documentales: ficha, solicitud, oficio, unido
-- [ ] Limpieza: nombres literal, remitente, `utils/inventarios` único
-- [ ] Roles: definidos a nivel acceso FS (sin login app)
-- [ ] Algoritmo: COMPLETO / PARCIAL / INCOMPLETO + match + unión + limpio entrega
-- [ ] Diagramas: global + secuencia 05–07 + decisión oficio
-- [ ] Manual: comandos, `--excluir`, cierre §11.6 y fallas frecuentes
-
----
-
-## 13. Notas y ampliación futura
-
-Temas opcionales si el evaluador pide más detalle:
-
-1. Anexo de diccionario de datos campo a campo (base en §4.4).
-2. Matriz RACI formal de roles (hoy §8 es guía operativa).
-3. Política de retención de `data/work` y logs.
-4. Activación del módulo resoluciones (path ya en YAML).
-5. Criterios exactos del paso 03 (`revision` / `no_considerado`) desde `analizar_datos`.
-6. Mantener sync documentación ↔ utilidades de transfer en `utils/oficios`.
-
-Ya cubierto en este documento: consolidación **03b**, carpetas OFICIOS/EMPRESAS, inventarios de entrega con `limpiar_resultado_final`.
 
 ---
 
