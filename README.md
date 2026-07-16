@@ -236,9 +236,9 @@ PDF_unido + reporte_solicitud_oficio
 | `inventario_final.csv`                    | output inventario                    | `hoja_ruta,nombre_informe,tiene_informe,…`                                                                                        |
 | `lista_fichas_oficios`                    | work 05 + por empresa                | `empresa;archivo;hoja_ruta;conformidad;tiene_hoja_ruta;revisado` (+ `ruta_pdf` operativo)                                         |
 | `solicitud_oficio.csv`                    | work 05                              | Merge solicitudes×oficios + `match_oficio`                                                                                        |
-| `resumen_validacion.csv`                  | work 05                              | Validación 06: `metrica,valor` (encontrados vs no encontrados en ambos sentidos)                                                  |
+| `resumen_validacion.csv`                  | work 05                              | Validación 06 por **expediente**: `metrica,valor` (unidos, solicitud sin oficio, oficio sin solicitud, unión)                     |
 | `solicitudes_sin_oficio.csv`              | work 05                              | Validación 06: solicitudes sin oficio (`match_oficio=False`)                                                                      |
-| `oficios_sin_solicitud.csv`               | work 05                              | Validación 06: oficios elegibles sin solicitud asociada                                                                           |
+| `oficios_sin_solicitud.csv`               | work 05                              | Validación 06: oficios elegibles (por expediente) sin solicitud asociada                                                          |
 | `reporte_solicitud_oficio.csv`            | expedientes_oficio                   | Operativo 07: `hoja_ruta,archivo_solicitud,archivo_oficio,pdf_salida,paginas_*,match_oficio,…`                                    |
 | `**reporte_solicitud_oficio_limpio.csv**` | expedientes_oficio                   | **Entrega Flujo 2:** `hoja_ruta`, `oficio`, `remitente`, `asunto` (§4.4)                                                          |
 | Inventario alimentado limpio (F1)         | expediente_final                     | **Entrega Flujo 1:** `hoja_ruta`, `nombre_informe`, `remitente`, `asunto`                                                         |
@@ -358,13 +358,24 @@ Orquestador (05→06→07):
 
 Sin este paso, el 07 no tiene tabla de matches actualizada.
 
-**Reportes de validación (paso 06).** Como se evalúan los **dos contenidos** (solicitudes y oficios), el paso deja en `work/05_fichas_oficios/reportes/` una evaluación cruzada que demuestra *lo encontrado* y *lo no encontrado*, **sin modificar** el inventario final:
+**Reportes de validación (paso 06).** Como se evalúan los **dos contenidos** (solicitudes y oficios), el paso deja en `work/05_fichas_oficios/reportes/` una evaluación cruzada que demuestra *lo encontrado* y *lo no encontrado*, **contada por expediente único (`hoja_ruta`)** y por fuente, **sin modificar** el inventario final:
 
-- `resumen_validacion.csv` — tabla `metrica, valor` con el panorama: totales, con match y sin match en ambos sentidos.
+- `resumen_validacion.csv` — tabla `metrica, valor` por expediente y fuente.
 - `solicitudes_sin_oficio.csv` — solicitudes cuyo oficio **no** se encontró (`match_oficio = False`).
-- `oficios_sin_solicitud.csv` — oficios elegibles cuya `hoja_ruta` **no** aparece en ninguna solicitud.
+- `oficios_sin_solicitud.csv` — oficios elegibles (por expediente) cuya `hoja_ruta` **no** aparece en ninguna solicitud.
 
-> `oficios_sin_solicitud` se calcula sobre oficios **elegibles** (COMPLETO con `hoja_ruta`; se excluyen `revisado=visto` y PARCIAL/INCOMPLETO, que no tienen `hoja_ruta` confiable para emparejar).
+Como se cuenta por **expediente**, la cifra de expedientes unidos es única desde ambas fuentes y reconcilia: `unidos + solicitud_sin_oficio = expedientes_solicitud` y `unidos + oficio_sin_solicitud = expedientes_oficio_elegible`. Ejemplo real:
+
+| métrica (expedientes) | valor |
+| --------------------- | ----- |
+| `expedientes_solicitud` (pasaron al paso 2) | 10 235 |
+| `expedientes_oficio_elegible` (COMPLETO) | 7 929 |
+| `expedientes_con_solicitud_y_oficio` (unidos) | 4 581 |
+| `expedientes_solicitud_sin_oficio` | 5 654 |
+| `expedientes_oficio_sin_solicitud` | 3 348 |
+| `expedientes_union_total` | 13 583 |
+
+> `oficios_sin_solicitud` y los conteos de oficio se calculan sobre oficios **elegibles** (COMPLETO con `hoja_ruta`; se excluyen `revisado=visto` y PARCIAL/INCOMPLETO, que no tienen `hoja_ruta` confiable para emparejar), deduplicando por expediente.
 
 #### Paso 07 — `unir_solicitud_oficio` *(después de 06)*
 
@@ -533,10 +544,11 @@ Salida: tablas + copia/movimiento a carpetas `pdfs_clasificados/...`.
 - Une solicitudes (`seleccionados_total`) con oficios elegibles por `hoja_ruta`.
 - Excluye oficios marcados `revisado=visto` o en estados no elegibles (`PARCIAL`, `INCOMPLETO`).
 - Produce columna `match_oficio` (booleana / indicador de éxito).
-- **Evaluación de los 2 contenidos** (reportes aparte, no tocan el inventario final):
-  - `resumen_validacion.csv` — tabla `metrica, valor` con encontrados vs no encontrados en ambos sentidos.
+- **Evaluación de los 2 contenidos, por expediente único** (reportes aparte, no tocan el inventario final):
+  - `resumen_validacion.csv` — `metrica, valor` por expediente y fuente (unidos, solicitud sin oficio, oficio sin solicitud, unión total).
   - `solicitudes_sin_oficio.csv` — solicitudes sin oficio (`match_oficio = False`).
-  - `oficios_sin_solicitud.csv` — oficios elegibles sin solicitud asociada.
+  - `oficios_sin_solicitud.csv` — oficios elegibles (por expediente) sin solicitud asociada.
+  - Reconcilia: `unidos + solicitud_sin_oficio = expedientes_solicitud` y `unidos + oficio_sin_solicitud = expedientes_oficio_elegible`.
 
 ### 7.4 Verificación de unión (paso 07)
 

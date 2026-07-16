@@ -42,9 +42,16 @@ def ejecutar(config, logger):
     df_result = merge_solicitud_oficio(df_solicitudes, oficios_elegibles, logger)
     df_result.to_csv(salida, index=False, encoding="utf-8-sig")
 
-    # Validacion de los 2 contenidos evaluados (reportes aparte, no tocan inventario final):
-    #   - solicitudes sin oficio: filas del cruce con match_oficio=False
-    #   - oficios sin solicitud: oficios elegibles cuya hoja_ruta no aparece en solicitudes
+    # Validacion de los 2 contenidos, contada por EXPEDIENTE unico (hoja_ruta).
+    # Reportes aparte, no tocan el inventario final.
+    sol_keys = {k for k in df_solicitudes["hoja_ruta"].map(normalizar_hoja_ruta) if k}
+    ofi_keys = {k for k in oficios_elegibles["hoja_ruta"].map(normalizar_hoja_ruta) if k}
+    exp_ambos = sol_keys & ofi_keys            # unidos (misma cifra desde ambas fuentes)
+    exp_sol_sin_ofi = sol_keys - ofi_keys      # solicitud sin oficio
+    exp_ofi_sin_sol = ofi_keys - sol_keys      # oficio sin solicitud
+    exp_union = sol_keys | ofi_keys
+
+    # Detalle: solicitudes sin oficio (una fila por expediente; las solicitudes ya son unicas).
     if "match_oficio" in df_result.columns:
         sin_oficio = df_result[~df_result["match_oficio"].astype(bool)].copy()
     else:
@@ -52,27 +59,25 @@ def ejecutar(config, logger):
     salida_sin_oficio = reportes_oficios / "solicitudes_sin_oficio.csv"
     sin_oficio.to_csv(salida_sin_oficio, index=False, encoding="utf-8-sig")
 
+    # Detalle: oficios sin solicitud (deduplicado por expediente).
     sin_solicitud = calcular_oficios_sin_solicitud(df_solicitudes, oficios_elegibles)
     salida_sin_solicitud = reportes_oficios / "oficios_sin_solicitud.csv"
     sin_solicitud.to_csv(salida_sin_solicitud, index=False, encoding="utf-8-sig")
 
     con_oficio = int(df_result["match_oficio"].sum()) if "match_oficio" in df_result.columns else 0
-    oficios_con_hoja = int(
-        oficios_elegibles["hoja_ruta"].map(normalizar_hoja_ruta).astype(bool).sum()
-    )
-    oficios_con_solicitud = oficios_con_hoja - len(sin_solicitud)
 
-    # Resumen de validacion: demuestra en una sola tabla lo encontrado / no encontrado.
+    # Resumen de validacion por EXPEDIENTE y por fuente (demuestra encontrado / no encontrado).
     resumen_validacion = pd.DataFrame(
         [
-            ("solicitudes_total", len(df_solicitudes)),
-            ("solicitudes_con_oficio", con_oficio),
-            ("solicitudes_sin_oficio", len(sin_oficio)),
-            ("oficios_entrada", len(df_oficios)),
+            ("expedientes_solicitud", len(sol_keys)),
+            ("expedientes_oficio_elegible", len(ofi_keys)),
+            ("expedientes_con_solicitud_y_oficio", len(exp_ambos)),
+            ("expedientes_solicitud_sin_oficio", len(exp_sol_sin_ofi)),
+            ("expedientes_oficio_sin_solicitud", len(exp_ofi_sin_sol)),
+            ("expedientes_union_total", len(exp_union)),
+            ("oficios_entrada_filas", len(df_oficios)),
             ("oficios_excluidos_parcial_incompleto_visto", oficios_excluidos),
-            ("oficios_elegibles", len(oficios_elegibles)),
-            ("oficios_con_solicitud", oficios_con_solicitud),
-            ("oficios_sin_solicitud", len(sin_solicitud)),
+            ("oficios_elegibles_filas", len(oficios_elegibles)),
         ],
         columns=["metrica", "valor"],
     )
@@ -89,9 +94,12 @@ def ejecutar(config, logger):
         "filas_resultado": len(df_result),
         "con_match_oficio": con_oficio,
         "sin_match_oficio": len(df_result) - con_oficio,
-        "solicitudes_sin_oficio": len(sin_oficio),
-        "oficios_con_solicitud": oficios_con_solicitud,
-        "oficios_sin_solicitud": len(sin_solicitud),
+        "expedientes_solicitud": len(sol_keys),
+        "expedientes_oficio_elegible": len(ofi_keys),
+        "expedientes_con_solicitud_y_oficio": len(exp_ambos),
+        "expedientes_solicitud_sin_oficio": len(exp_sol_sin_ofi),
+        "expedientes_oficio_sin_solicitud": len(exp_ofi_sin_sol),
+        "expedientes_union_total": len(exp_union),
         "salida": str(salida),
         "salida_solicitudes_sin_oficio": str(salida_sin_oficio),
         "salida_oficios_sin_solicitud": str(salida_sin_solicitud),
@@ -124,14 +132,16 @@ def filtrar_oficios_para_merge(df_oficios, logger=None):
 
 
 def calcular_oficios_sin_solicitud(df_solicitudes, df_oficios):
-    """Oficios elegibles cuya hoja_ruta no aparece en ninguna solicitud."""
+    """Oficios elegibles (por expediente) cuya hoja_ruta no aparece en ninguna solicitud."""
     sol_keys = {
         k for k in df_solicitudes["hoja_ruta"].map(normalizar_hoja_ruta) if k
     }
     ofi = df_oficios.copy()
     ofi["_key"] = ofi["hoja_ruta"].map(normalizar_hoja_ruta)
     ofi = ofi[ofi["_key"].astype(bool)]
-    sin = ofi[~ofi["_key"].isin(sol_keys)].drop(columns=["_key"]).copy()
+    sin = ofi[~ofi["_key"].isin(sol_keys)].copy()
+    # Un expediente por fila (conserva la primera aparicion).
+    sin = sin.drop_duplicates(subset=["_key"], keep="first").drop(columns=["_key"])
     return sin
 
 
