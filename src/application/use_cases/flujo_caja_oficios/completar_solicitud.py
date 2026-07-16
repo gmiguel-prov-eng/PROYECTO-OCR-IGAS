@@ -7,6 +7,16 @@ from utils.inventarios.limpieza import normalizar_hoja_ruta
 
 ESTADOS_EXCLUIDOS = {"INCOMPLETO", "PARCIAL"}
 
+# Fichas que, segun el informe, NO deben considerarse en el inventario final.
+# Se detectaron 5 expedientes que no corresponden y se retiran del conteo final.
+FICHAS_EXCLUIDAS_POR_INFORME = [
+    "E-008619-2019",
+    "E-008621-2019",
+    "E-008630-2019",
+    "E-008636-2019",
+    "E-008657-2019",
+]
+
 
 def ejecutar(config, logger):
     rutas = config["paths"]["work"]
@@ -66,6 +76,22 @@ def ejecutar(config, logger):
 
     con_oficio = int(df_result["match_oficio"].sum()) if "match_oficio" in df_result.columns else 0
 
+    # Solicitudes SUELTAS: pasaron al Flujo 2 pero quedaron sin resolver =
+    # sin oficio Y sin expediente armado en Flujo 1 (expediente_final + subsanados).
+    armados_keys = _cargar_expedientes_armados(config, logger)
+    sueltas_keys = sol_keys - ofi_keys - armados_keys
+    sin_oficio_norm = sin_oficio["hoja_ruta"].map(normalizar_hoja_ruta)
+    sueltas = sin_oficio[~sin_oficio_norm.isin(armados_keys)].copy()
+    salida_sueltas = reportes_oficios / "solicitudes_sueltas.csv"
+    sueltas.to_csv(salida_sueltas, index=False, encoding="utf-8-sig")
+
+    # Inventario final de entrega = expedientes con oficio + expedientes armados,
+    # menos las fichas que segun el informe no deben considerarse.
+    inventario_keys = exp_ambos | armados_keys
+    excluidas_keys = {normalizar_hoja_ruta(c) for c in FICHAS_EXCLUIDAS_POR_INFORME if c}
+    excluidas_en_inventario = inventario_keys & excluidas_keys
+    inventario_final = len(inventario_keys - excluidas_keys)
+
     # Resumen de validacion por EXPEDIENTE y por fuente (demuestra encontrado / no encontrado).
     resumen_validacion = pd.DataFrame(
         [
@@ -75,6 +101,11 @@ def ejecutar(config, logger):
             ("expedientes_solicitud_sin_oficio", len(exp_sol_sin_ofi)),
             ("expedientes_oficio_sin_solicitud", len(exp_ofi_sin_sol)),
             ("expedientes_union_total", len(exp_union)),
+            ("expedientes_armados_flujo1", len(armados_keys)),
+            ("solicitudes_sueltas_sin_oficio_ni_armado", len(sueltas_keys)),
+            ("inventario_final_bruto_oficio_mas_armados", len(inventario_keys)),
+            ("fichas_excluidas_por_informe", len(excluidas_en_inventario)),
+            ("inventario_final", inventario_final),
             ("oficios_entrada_filas", len(df_oficios)),
             ("oficios_excluidos_parcial_incompleto_visto", oficios_excluidos),
             ("oficios_elegibles_filas", len(oficios_elegibles)),
@@ -100,9 +131,15 @@ def ejecutar(config, logger):
         "expedientes_solicitud_sin_oficio": len(exp_sol_sin_ofi),
         "expedientes_oficio_sin_solicitud": len(exp_ofi_sin_sol),
         "expedientes_union_total": len(exp_union),
+        "expedientes_armados_flujo1": len(armados_keys),
+        "solicitudes_sueltas": len(sueltas_keys),
+        "inventario_final_bruto": len(inventario_keys),
+        "fichas_excluidas_por_informe": len(excluidas_en_inventario),
+        "inventario_final": inventario_final,
         "salida": str(salida),
         "salida_solicitudes_sin_oficio": str(salida_sin_oficio),
         "salida_oficios_sin_solicitud": str(salida_sin_solicitud),
+        "salida_solicitudes_sueltas": str(salida_sueltas),
         "salida_resumen_validacion": str(salida_resumen),
     }
     logger.info("Merge completado: %s", resumen)
@@ -129,6 +166,53 @@ def filtrar_oficios_para_merge(df_oficios, logger=None):
             excluidos,
         )
     return ofi.loc[~excluir].copy(), excluidos
+
+
+def _cargar_expedientes_armados(config, logger=None):
+    """Expedientes armados en Flujo 1 (expediente_final + subsanados) por hoja_ruta.
+
+    Se usa solo para el conteo de solicitudes 'sueltas'. Si faltan rutas o
+    archivos, se omite sin romper la validacion.
+    """
+    rf = config.get("paths", {}).get("output", {}).get("resultados_finales", {})
+    fuentes = []
+    ef = rf.get("expediente_final")
+    if ef:
+        for nombre in ("inventario_final_alimentado_limpio.csv", "inventario_final.xlsx"):
+            candidato = Path(ef) / nombre
+            if candidato.exists():
+                fuentes.append(candidato)
+                break
+    sub = rf.get("expediente_subsanados")
+    if sub:
+        candidato = Path(sub) / "inventario_subsanados.csv"
+        if candidato.exists():
+            fuentes.append(candidato)
+
+    claves = set()
+    for ruta in fuentes:
+        try:
+            df = cargar_tabla(ruta)
+        except Exception:
+            if logger:
+                logger.warning("No se pudo leer expedientes armados: %s", ruta)
+            continue
+        if "hoja_ruta" in df.columns:
+            claves |= {k for k in df["hoja_ruta"].map(normalizar_hoja_ruta) if k}
+
+    if logger:
+        if fuentes:
+            logger.info(
+                "Expedientes armados Flujo 1 (para 'sueltas'): %s | fuentes: %s",
+                len(claves),
+                [str(f) for f in fuentes],
+            )
+        else:
+            logger.warning(
+                "No se hallaron inventarios de Flujo 1 (expediente_final/subsanados); "
+                "'solicitudes_sueltas' contara todas las que no tienen oficio."
+            )
+    return claves
 
 
 def calcular_oficios_sin_solicitud(df_solicitudes, df_oficios):

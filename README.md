@@ -239,6 +239,7 @@ PDF_unido + reporte_solicitud_oficio
 | `resumen_validacion.csv`                  | work 05                              | Validación 06 por **expediente**: `metrica,valor` (unidos, solicitud sin oficio, oficio sin solicitud, unión)                     |
 | `solicitudes_sin_oficio.csv`              | work 05                              | Validación 06: solicitudes sin oficio (`match_oficio=False`)                                                                      |
 | `oficios_sin_solicitud.csv`               | work 05                              | Validación 06: oficios elegibles (por expediente) sin solicitud asociada                                                          |
+| `solicitudes_sueltas.csv`                 | work 05                              | Validación 06: solicitudes sin oficio **ni** expediente armado en Flujo 1                                                         |
 | `reporte_solicitud_oficio.csv`            | expedientes_oficio                   | Operativo 07: `hoja_ruta,archivo_solicitud,archivo_oficio,pdf_salida,paginas_*,match_oficio,…`                                    |
 | `**reporte_solicitud_oficio_limpio.csv**` | expedientes_oficio                   | **Entrega Flujo 2:** `hoja_ruta`, `oficio`, `remitente`, `asunto` (§4.4)                                                          |
 | Inventario alimentado limpio (F1)         | expediente_final                     | **Entrega Flujo 1:** `hoja_ruta`, `nombre_informe`, `remitente`, `asunto`                                                         |
@@ -363,6 +364,7 @@ Sin este paso, el 07 no tiene tabla de matches actualizada.
 - `resumen_validacion.csv` — tabla `metrica, valor` por expediente y fuente.
 - `solicitudes_sin_oficio.csv` — solicitudes cuyo oficio **no** se encontró (`match_oficio = False`).
 - `oficios_sin_solicitud.csv` — oficios elegibles (por expediente) cuya `hoja_ruta` **no** aparece en ninguna solicitud.
+- `solicitudes_sueltas.csv` — solicitudes que pasaron al Flujo 2 y quedaron **sin resolver**: sin oficio **y** sin expediente armado en Flujo 1 (`expediente_final` + subsanados).
 
 Como se cuenta por **expediente**, la cifra de expedientes unidos es única desde ambas fuentes y reconcilia: `unidos + solicitud_sin_oficio = expedientes_solicitud` y `unidos + oficio_sin_solicitud = expedientes_oficio_elegible`. Ejemplo real:
 
@@ -374,6 +376,15 @@ Como se cuenta por **expediente**, la cifra de expedientes unidos es única desd
 | `expedientes_solicitud_sin_oficio` | 5 654 |
 | `expedientes_oficio_sin_solicitud` | 3 348 |
 | `expedientes_union_total` | 13 583 |
+| `expedientes_armados_flujo1` (final 244 + subsanados 19) | 263 |
+| **`solicitudes_sueltas`** (sin oficio ni armado) | **5 410** |
+| `inventario_final_bruto` (con oficio + armados) | 4 844 |
+| `fichas_excluidas_por_informe` | 5 |
+| **`inventario_final`** (bruto − excluidas) | **4 839** |
+
+> **Solicitudes sueltas.** Lo ideal sería que al Flujo 2 solo pasaran las fichas que no se lograron armar en Flujo 1; como hoy pasan todas, la validación cierra indicando cuántas quedan sueltas: `solicitudes_sueltas = expedientes_solicitud − con_oficio − armados_en_solicitud`. Los inventarios de Flujo 1 se leen desde `output.resultados_finales` (si faltan, el conteo cae a "todas las que no tienen oficio").
+
+> **Inventario final = 4 839.** El inventario de entrega es `con_oficio (4 581) + armados (263) = 4 844`. Se detectaron **5 fichas que, según el informe, no deben considerarse** (`E-008619-2019`, `E-008621-2019`, `E-008630-2019`, `E-008636-2019`, `E-008657-2019`; están entre los armados), por lo que el **inventario final queda en 4 839**. La lista de exclusión está en `FICHAS_EXCLUIDAS_POR_INFORME` (paso 06).
 
 > `oficios_sin_solicitud` y los conteos de oficio se calculan sobre oficios **elegibles** (COMPLETO con `hoja_ruta`; se excluyen `revisado=visto` y PARCIAL/INCOMPLETO, que no tienen `hoja_ruta` confiable para emparejar), deduplicando por expediente.
 
@@ -545,9 +556,11 @@ Salida: tablas + copia/movimiento a carpetas `pdfs_clasificados/...`.
 - Excluye oficios marcados `revisado=visto` o en estados no elegibles (`PARCIAL`, `INCOMPLETO`).
 - Produce columna `match_oficio` (booleana / indicador de éxito).
 - **Evaluación de los 2 contenidos, por expediente único** (reportes aparte, no tocan el inventario final):
-  - `resumen_validacion.csv` — `metrica, valor` por expediente y fuente (unidos, solicitud sin oficio, oficio sin solicitud, unión total).
+  - `resumen_validacion.csv` — `metrica, valor` por expediente y fuente (unidos, solicitud sin oficio, oficio sin solicitud, unión total, armados Flujo 1, solicitudes sueltas).
   - `solicitudes_sin_oficio.csv` — solicitudes sin oficio (`match_oficio = False`).
   - `oficios_sin_solicitud.csv` — oficios elegibles (por expediente) sin solicitud asociada.
+  - `solicitudes_sueltas.csv` — solicitudes sin oficio **ni** expediente armado en Flujo 1 (quedan sueltas).
+  - `inventario_final` — `con_oficio + armados − 5 fichas excluidas por informe = 4 839`.
   - Reconcilia: `unidos + solicitud_sin_oficio = expedientes_solicitud` y `unidos + oficio_sin_solicitud = expedientes_oficio_elegible`.
 
 ### 7.4 Verificación de unión (paso 07)
