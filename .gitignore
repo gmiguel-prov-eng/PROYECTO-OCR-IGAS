@@ -6,18 +6,13 @@ __pycache__/
 .ipynb_checkpoints/
 .pytest_cache/
 
-# Notebooks originales no versionables
-notebooks/*
-!notebooks/README.md
+# Notebooks (se mantienen solo en local, no se versionan)
+notebooks/
 
 # Configuracion local o de infraestructura real (rutas absolutas / usuario)
 config/config_local.yaml
 config/config_vm.yaml
 config/config_compartido.yaml
-
-# Notebooks
-notebooks/*
-!notebooks/README.md
 
 # Datos y salidas generadas
 data/input/
