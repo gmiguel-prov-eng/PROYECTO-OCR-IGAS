@@ -2,41 +2,63 @@ project:
   name: PROYECTO-IGAS
   environment: example
 
+# Ajusta segun tu entorno. Copia este archivo a config_local.yaml (Windows)
+# o config_vm.yaml (Linux) y reemplaza las rutas. Esos archivos NO se versionan.
 ocr:
-  tesseract_cmd: tesseract
+  tesseract_cmd: C:/Program Files/Tesseract-OCR/tesseract.exe
   languages: spa+eng
   fallback_languages: eng
   require_languages: true
 
 paths:
   input:
-    cajas: data/input/cajas
+    # Rutas de red / repositorio documental del entorno (reemplazar).
+    cajas: RUTA/A/EVAP-FICHAS TECNICAS/02. FICHAS TECNICAS
+    oficios_origen: RUTA/A/DGPRC/OFICIOS
+    oficios: RUTA/A/EVAP-FICHAS TECNICAS/OFICIOS
+    oficio_unido: RUTA/A/EVAP-FICHAS TECNICAS/OFICIOS/TELEFONICA_OTROS
+    resoluciones: RUTA/A/RESOLUCIONES DIRECTORALES 2019
 
   work:
     separacion:
-      separados: data/work/01_separacion/separados
-      reportes: data/work/01_separacion/reportes
+      separados: ./data/work/01_separacion/separados
+      separados_oficio: ./data/work/01_separacion/separados_oficio
+      reportes: ./data/work/01_separacion/reportes
+      reportes_oficio: ./data/work/01_separacion/reportes_oficio
 
     ocr_fichas:
-      extraido: data/work/02_ocr_fichas/extraido
-      reportes: data/work/02_ocr_fichas/reportes
+      extraido: ./data/work/02_ocr_fichas/extraido
+      reportes: ./data/work/02_ocr_fichas/reportes
 
     analisis:
-      tablas: data/work/03_analisis/tablas
+      tablas: ./data/work/03_analisis/tablas
       pdfs_clasificados:
-        seleccionados: data/work/03_analisis/pdfs_clasificados/seleccionados
-        revision: data/work/03_analisis/pdfs_clasificados/revision
-        no_seleccionados: data/work/03_analisis/pdfs_clasificados/no_seleccionados
-        no_considerados: data/work/03_analisis/pdfs_clasificados/no_considerados
+        seleccionados: ./data/work/03_analisis/pdfs_clasificados/seleccionados
+        revision: ./data/work/03_analisis/pdfs_clasificados/revision
+        no_seleccionados: ./data/work/03_analisis/pdfs_clasificados/no_seleccionados
+        no_considerados: ./data/work/03_analisis/pdfs_clasificados/no_considerados
+
+    revision_manual: ./data/work/03_1_revision_manual
 
     ocr_solicitudes:
-      extraido: data/work/04_ocr_solicitudes/extraido
-      reportes: data/work/04_ocr_solicitudes/reportes
+      extraido: ./data/work/04_ocr_solicitudes/extraido
+      reportes: ./data/work/04_ocr_solicitudes/reportes
+
+    fichas_oficios:
+      reportes: ./data/work/05_fichas_oficios/reportes
+
+    ocr_resoluciones:
+      extraido: ./data/work/06_ocr_resoluciones/extraido
+      reportes: ./data/work/06_ocr_resoluciones/reportes
 
   output:
     resultados_finales:
-      resultados: data/output/04_resultados_finales/resultados
-      expedientes: data/output/04_resultados_finales/expedientes
-      inventario: data/output/04_resultados_finales/inventario
+      expedientes: ./data/output/04_resultados_finales/expedientes
+      inventario: ./data/output/04_resultados_finales/inventario
+      expediente_final: ./data/output/04_resultados_finales/expediente_final
+      expedientes_oficio: ./data/output/04_resultados_finales/expedientes_oficio
+      # PDF unidos: normalmente carpeta 'extension' en la ruta de red del entorno.
+      expedientes_oficio_pdfs: RUTA/A/EVAP-FICHAS TECNICAS/extension
+      expediente_subsanados: ./data/output/04_resultados_finales/expediente_subsanados
 
-  logs: data/logs
+  logs: ./data/logs

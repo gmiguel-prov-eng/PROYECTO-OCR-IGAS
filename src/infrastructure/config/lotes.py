@@ -50,6 +50,16 @@ def descubrir_cajas(input_cajas):
     )
 
 
+# Rutas compartidas (no se particionan por lote_N).
+CLAVES_SIN_SUFIJO_LOTE = {
+    "revision_manual",
+    "expediente_final",
+    "expediente_subsanados",
+    "expedientes_oficio",
+    "expedientes_oficio_pdfs",
+}
+
+
 def agregar_lote_a_salidas(paths, lote_nombre):
     paths_lote = deepcopy(paths)
 
@@ -65,10 +75,13 @@ def agregar_lote_a_salidas(paths, lote_nombre):
 
 def _agregar_lote_a_hojas(node, lote_nombre):
     if isinstance(node, dict):
-        return {
-            key: _agregar_lote_a_hojas(value, lote_nombre)
-            for key, value in node.items()
-        }
+        out = {}
+        for key, value in node.items():
+            if key in CLAVES_SIN_SUFIJO_LOTE:
+                out[key] = value
+            else:
+                out[key] = _agregar_lote_a_hojas(value, lote_nombre)
+        return out
 
     return Path(node) / lote_nombre
 

@@ -55,9 +55,9 @@ def test_rutas_principales_estan_definidas_en_yaml():
     assert paths["work"]["analisis"]["pdfs_clasificados"]["no_considerados"]
     assert paths["work"]["ocr_solicitudes"]["extraido"]
     assert paths["work"]["ocr_solicitudes"]["reportes"]
-    assert paths["output"]["resultados_finales"]["resultados"]
     assert paths["output"]["resultados_finales"]["expedientes"]
     assert paths["output"]["resultados_finales"]["inventario"]
+    assert paths["output"]["resultados_finales"]["expediente_final"]
     assert paths["logs"]
 
 
@@ -92,7 +92,9 @@ def test_config_lote_filtra_cajas_y_separa_salidas(tmp_path):
     config["paths"]["input"]["cajas"] = input_cajas
     config["paths"]["work"]["separacion"]["separados"] = tmp_path / "work" / "separados"
     config["paths"]["work"]["separacion"]["reportes"] = tmp_path / "work" / "reportes"
-    config["paths"]["output"]["resultados_finales"]["resultados"] = tmp_path / "output" / "resultados"
+    config["paths"]["output"]["resultados_finales"]["expedientes"] = tmp_path / "output" / "expedientes"
+    config["paths"]["output"]["resultados_finales"]["inventario"] = tmp_path / "output" / "inventario"
+    config["paths"]["output"]["resultados_finales"]["expediente_final"] = tmp_path / "output" / "expediente_final"
     config["paths"]["logs"] = tmp_path / "logs"
 
     config_lote = preparar_config_lote(config, numero_lote=2, tamano_lote=5)
@@ -101,7 +103,9 @@ def test_config_lote_filtra_cajas_y_separa_salidas(tmp_path):
     assert config_lote["lote"]["cajas"] == ["caja_6", "caja_10"]
     assert config_lote["paths"]["input"]["cajas"] == input_cajas
     assert config_lote["paths"]["work"]["separacion"]["separados"].name == "lote_2"
-    assert config_lote["paths"]["output"]["resultados_finales"]["resultados"].name == "lote_2"
+    assert config_lote["paths"]["output"]["resultados_finales"]["expedientes"].name == "lote_2"
+    assert config_lote["paths"]["output"]["resultados_finales"]["inventario"].name == "lote_2"
+    assert config_lote["paths"]["output"]["resultados_finales"]["expediente_final"].name == "expediente_final"
     assert config_lote["paths"]["logs"].name == "lote_2"
 
 

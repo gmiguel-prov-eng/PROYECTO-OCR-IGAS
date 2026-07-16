@@ -10,9 +10,10 @@ __pycache__/
 notebooks/*
 !notebooks/README.md
 
-# Configuracion local o de infraestructura real
+# Configuracion local o de infraestructura real (rutas absolutas / usuario)
 config/config_local.yaml
 config/config_vm.yaml
+config/config_compartido.yaml
 
 # Notebooks
 notebooks/*

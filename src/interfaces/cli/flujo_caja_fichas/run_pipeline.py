@@ -1,14 +1,19 @@
-import argparse
+﻿import argparse
 import sys
 import time
 from pathlib import Path
 
 
-SRC_ROOT = Path(__file__).resolve().parents[2]
+SRC_ROOT = Path(__file__).resolve().parents[3]
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from application.use_cases import analizar_datos, ocr_fichas, ocr_solicitudes, separar_pdf
+from application.use_cases.flujo_caja_fichas import (
+    analizar_datos,
+    ocr_fichas,
+    ocr_solicitudes,
+    separar_pdf,
+)
 from infrastructure.config.lotes import preparar_config_lote
 from infrastructure.config.yaml_loader import cargar_config, crear_directorios_base
 from infrastructure.logging.logger import configurar_logger

@@ -1,13 +1,13 @@
-import argparse
+﻿import argparse
 import sys
 from pathlib import Path
 
 
-SRC_ROOT = Path(__file__).resolve().parents[2]
+SRC_ROOT = Path(__file__).resolve().parents[3]
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from application.use_cases.ocr_fichas import ejecutar
+from application.use_cases.flujo_caja_fichas.ocr_fichas import ejecutar
 from infrastructure.config.yaml_loader import cargar_config, crear_directorios_base
 from infrastructure.logging.logger import configurar_logger
 

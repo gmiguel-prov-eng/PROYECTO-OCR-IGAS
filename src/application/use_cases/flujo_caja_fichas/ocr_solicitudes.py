@@ -35,11 +35,9 @@ def ejecutar(config, logger):
 
     rutas = config["paths"]
     entrada = rutas["work"]["analisis"]["pdfs_clasificados"]["seleccionados"]
-    resultados = rutas["output"]["resultados_finales"]["resultados"]
     expedientes = rutas["output"]["resultados_finales"]["expedientes"]
     inventario = rutas["output"]["resultados_finales"]["inventario"]
 
-    asegurar_directorio(resultados)
     asegurar_directorio(expedientes)
     asegurar_directorio(inventario)
 
@@ -59,14 +57,13 @@ def ejecutar(config, logger):
         df = pd.DataFrame(columns=columnas_salida())
 
     df["tiene_informe"] = df["nombre_informe"].apply(tiene_informe)
-    guardar_salidas(df, resultados, inventario)
+    guardar_salidas(df, inventario)
     copiados = copiar_expedientes_con_informe(df, expedientes, logger)
 
     return {
         "proceso": "04_ocr_solicitudes",
         "estado": "completado",
         "entrada": entrada,
-        "resultados": resultados,
         "expedientes": expedientes,
         "inventario": inventario,
         "pdfs_detectados": len(pdfs),
@@ -270,10 +267,9 @@ def normalizar_texto_busqueda(texto):
     return texto.strip()
 
 
-def guardar_salidas(df, resultados, inventario):
-    resultados = Path(resultados)
+def guardar_salidas(df, inventario):
+    """Persiste inventarios del paso 04 (canónico)."""
     inventario = Path(inventario)
-    asegurar_directorio(resultados)
     asegurar_directorio(inventario)
 
     columnas_exportables = [
@@ -289,7 +285,6 @@ def guardar_salidas(df, resultados, inventario):
         "error",
     ]
     df_export = df[[col for col in columnas_exportables if col in df.columns]].copy()
-    df_export.to_csv(resultados / "resultados_ocr_solicitudes.csv", index=False, encoding="utf-8-sig")
     df_export.to_csv(inventario / "inventario_general.csv", index=False, encoding="utf-8-sig")
     df_export[df_export["tiene_informe"]].to_csv(
         inventario / "inventario_final.csv",
